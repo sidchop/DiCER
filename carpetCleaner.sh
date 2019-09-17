@@ -22,30 +22,33 @@
 
 
 # Here adjust it all.
-prepro_variant=AROMAnonaggr
+#prepro_variant=AROMAnonaggr
 # Have to remember to always start without 2P then add 2P aggressively later, this is a reasonable thing to have to be honest. 
 # Now here see if we use aggresive AROMA what happens to the overall structure of things does this change the qc-fc?
 
-# prepro_variant=smoothAROMAnonaggr
+ prepro_variant=smoothAROMAnonaggr
 
-echo "Processing " $subject ".................."
-if [ ! -d "$FMRIPREP_DIR/$subject/dbscan" ]; then
-          mkdir -p $FMRIPREP_DIR/$subject/dbscan
+echo "Processing " $subject "ses-"$ses ".................."
+if [ ! -d "$FMRIPREP_DIR/$subject/ses-$ses/dbscan" ]; then
+          mkdir -p $FMRIPREP_DIR/$subject/ses-$ses/dbscan
 fi
 # Remove existing stuff in dbscan
-rm -rf $FMRIPREP_DIR/$subject/dbscan/*
+rm -rf $FMRIPREP_DIR/$subject/ses-$ses/dbscan/*
 # rm -rf $FMRIPREP_DIR/$subject/dbscan/*.txt
 
-func=$FMRIPREP_DIR/$subject'/func/'$subject"_task-rest_"$SCAN_ID"bold_space-"$space_variant"_variant-"$prepro_variant"_preproc.nii.gz"
-confounds=$FMRIPREP_DIR/$subject'/func/'$subject"_task-rest_"$SCAN_ID"bold_confounds.tsv"
-gm_prob_T1w=$FMRIPREP_DIR/$subject/anat/$subject"_T1w_space-"$space_variant"_class-GM_probtissue.nii.gz"
-gm_prob_epi=$FMRIPREP_DIR/$subject/anat/$subject"_bold_space-"$space_variant"_class-GM_probtissue.nii.gz"
-mask_T1w=$FMRIPREP_DIR/$subject/anat/$subject"_T1w_space-"$space_variant"_brainmask.nii.gz"
-mask_epi=$FMRIPREP_DIR/$subject/anat/$subject"_bold_space-"$space_variant"_brainmask.nii.gz"
+##added ses replaced "varient" with "desc" to match new convention, removed changed preproc to _bold, removed scan ID
+## renamed probseg and brain mask files "_label-GM_probseg.nii.gz"
+func=$FMRIPREP_DIR/$subject/ses-$ses'/func/'$subject"_ses-"$ses"_task-rest_space-"$space_variant"_desc-"$prepro_variant"_bold.nii.gz"
+confounds=$FMRIPREP_DIR/$subject/ses-$ses'/func/'$subject"_ses-"$ses"_task-rest_desc-confounds_regressors.tsv"
+gm_prob_T1w=$FMRIPREP_DIR/$subject/anat/$subject"_label-GM_probseg.nii.gz"  #need to check if there are the right files
+gm_prob_epi=$FMRIPREP_DIR/$subject/anat/$subject"_space-"$space_variant"_label-GM_probseg.nii.gz"
+mask_T1w=$FMRIPREP_DIR/$subject/anat/$subject"_desc-brain_mask.nii.gz"
+mask_epi=$FMRIPREP_DIR/$subject/anat/$subject"_space-"$space_variant"_desc-brain_mask.nii.gz"
 
-dtissue_T1w=$FMRIPREP_DIR/$subject/anat/$subject"_T1w_space-"$space_variant"_dtissue.nii.gz"
-dtissue_epi=$FMRIPREP_DIR/$subject/anat/$subject"_bold_space-"$space_variant"_dtissue.nii.gz"
-dtissue_epi_masked=$FMRIPREP_DIR/$subject"/dbscan/"$subject"_bold_space-"$space_variant"_dtissue_masked.nii.gz"
+##not sure if an issue, but the updated dseg(dtissue) files have a dif numbering for gm wm csf
+dtissue_T1w=$FMRIPREP_DIR/$subject/anat/$subject"_dseg.nii.gz"
+dtissue_epi=$FMRIPREP_DIR/$subject/anat/$subject"_space-"$space_variant"_dseg.nii.gz"
+dtissue_epi_masked=$FMRIPREP_DIR/$subject/ses-$ses'/dbscan/'$subject"_ses-"$ses"_space-"$space_variant"_dseg_masked.nii.gz"
 
 #flirt the masks and maps to be in epi space
 flirt -in $gm_prob_T1w -out $gm_prob_epi -ref $func -applyxfm -usesqform
@@ -53,14 +56,16 @@ flirt -in $mask_T1w -out $mask_epi -ref $func -applyxfm -usesqform
 flirt -in $dtissue_T1w -out $dtissue_epi -ref $func -applyxfm -interp nearestneighbour -usesqform
 
 # Have this mean epi for the purposes of using this for a mask later on
-mean_epi_targ=$FMRIPREP_DIR/$subject'/dbscan/'$subject"_task-rest_"$SCAN_ID"bold_space-"$space_variant"_variant-"$prepro_variant"_preproc_mean.nii.gz"
+mean_epi_targ=$FMRIPREP_DIR/$subject/ses-$ses'/dbscan/'$subject"_ses-"$ses"_task-rest_space-"$space_variant"_desc-"$prepro_variant"_bold_mean.nii.gz"
 
 # Now take the tissue mask and explicity mask it off to where the mean $func image is > 0
 fslmaths $func -Tmean $mean_epi_targ
 fslmaths $dtissue_epi -mas $mean_epi_targ $dtissue_epi_masked
 
-dbscan_folder=$FMRIPREP_DIR/$subject"/dbscan/"
-gm_dbscan=$FMRIPREP_DIR/$subject"/dbscan/"$subject"_bold_space-"$space_variant"_gm_mask.nii.gz"
+dbscan_folder=$FMRIPREP_DIR/$subject/ses-$ses/"/dbscan/"
+
+####works up to here
+gm_dbscan=$FMRIPREP_DIR/$subject/ses-$ses/"/dbscan/"$subject"_bold_space-"$space_variant"_gm_mask.nii.gz"
 tissue_ordering=$FMRIPREP_DIR/$subject"/dbscan/"$subject"_bold_space-"$space_variant"_gm_mask_gsordering_tissue.nii.gz"
 
 export func
