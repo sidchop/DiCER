@@ -27,7 +27,8 @@
 # Now here see if we use aggresive AROMA what happens to the overall structure of things does this change the qc-fc?
 
  prepro_variant=smoothAROMAnonaggr
-
+ space_variant=MNI152Lin
+	
 echo "Processing " $subject "ses-"$ses ".................."
 if [ ! -d "$FMRIPREP_DIR/$subject/ses-$ses/dbscan" ]; then
           mkdir -p $FMRIPREP_DIR/$subject/ses-$ses/dbscan
@@ -40,18 +41,18 @@ rm -rf $FMRIPREP_DIR/$subject/ses-$ses/dbscan/*
 ## renamed probseg and brain mask files "_label-GM_probseg.nii.gz"
 func=$FMRIPREP_DIR/$subject/ses-$ses'/func/'$subject"_ses-"$ses"_task-rest_space-"$space_variant"_desc-"$prepro_variant"_bold.nii.gz"
 confounds=$FMRIPREP_DIR/$subject/ses-$ses'/func/'$subject"_ses-"$ses"_task-rest_desc-confounds_regressors.tsv"
-gm_prob_T1w=$FMRIPREP_DIR/$subject/anat/$subject"_label-GM_probseg.nii.gz"  #need to check if there are the right files
-gm_prob_epi=$FMRIPREP_DIR/$subject/anat/$subject"_space-"$space_variant"_label-GM_probseg.nii.gz"
-mask_T1w=$FMRIPREP_DIR/$subject/anat/$subject"_desc-brain_mask.nii.gz"
-mask_epi=$FMRIPREP_DIR/$subject/anat/$subject"_space-"$space_variant"_desc-brain_mask.nii.gz"
+gm_prob_T1w=$FMRIPREP_DIR/$subject/anat/$subject"_space-"$space_variant"_label-GM_probseg.nii.gz"  #Potentially redundant 
+gm_prob_epi=$FMRIPREP_DIR/$subject/anat/$subject"_space-"$space_variant"_label-GM_probseg.nii.gz" 
+mask_T1w=$FMRIPREP_DIR/$subject/anat/$subject"_space-"$space_variant"_desc-brain_mask.nii.gz" #Potentially redundant 
+mask_epi=$FMRIPREP_DIR/$subject/anat/$subject"_space-"$space_variant"_desc-brain_mask.nii.gz" 
 
 ##not sure if an issue, but the updated dseg(dtissue) files have a dif numbering for gm wm csf
-dtissue_T1w=$FMRIPREP_DIR/$subject/anat/$subject"_dseg.nii.gz"
-dtissue_epi=$FMRIPREP_DIR/$subject/anat/$subject"_space-"$space_variant"_dseg.nii.gz"
+dtissue_T1w=$FMRIPREP_DIR/$subject/anat/$subject"_space-"$space_variant"_dseg.nii.gz" #Potentially redundant 
+#dtissue_epi=$FMRIPREP_DIR/$subject/anat/$subject"_space-"$space_variant"_dseg.nii.gz"  
 dtissue_epi_masked=$FMRIPREP_DIR/$subject/ses-$ses'/dbscan/'$subject"_ses-"$ses"_space-"$space_variant"_dseg_masked.nii.gz"
 
-#flirt the masks and maps to be in epi space
-flirt -in $gm_prob_T1w -out $gm_prob_epi -ref $func -applyxfm -usesqform
+#flirt the masks and maps to be in epi space .  ###Potentially redundant in 1.4.1
+flirt -in $gm_prob_T1w -out $gm_prob_epi -ref $func -applyxfm -usesqform 
 flirt -in $mask_T1w -out $mask_epi -ref $func -applyxfm -usesqform
 flirt -in $dtissue_T1w -out $dtissue_epi -ref $func -applyxfm -interp nearestneighbour -usesqform
 
@@ -62,10 +63,9 @@ mean_epi_targ=$FMRIPREP_DIR/$subject/ses-$ses'/dbscan/'$subject"_ses-"$ses"_task
 fslmaths $func -Tmean $mean_epi_targ
 fslmaths $dtissue_epi -mas $mean_epi_targ $dtissue_epi_masked
 
-dbscan_folder=$FMRIPREP_DIR/$subject/ses-$ses/"/dbscan/"
+dbscan_folder=$FMRIPREP_DIR/$subject/ses-$ses"/dbscan"
 
-####works up to here
-gm_dbscan=$FMRIPREP_DIR/$subject/ses-$ses/"/dbscan/"$subject"_bold_space-"$space_variant"_gm_mask.nii.gz"
+gm_dbscan=$FMRIPREP_DIR/$subject/ses-$ses"/dbscan/"$subject"_bold_space-"$space_variant"_gm_mask.nii.gz"
 tissue_ordering=$FMRIPREP_DIR/$subject"/dbscan/"$subject"_bold_space-"$space_variant"_gm_mask_gsordering_tissue.nii.gz"
 
 export func
@@ -107,31 +107,34 @@ fslmaths $dbscan_folder/temp_gm_2 -add $dtissue_epi_masked $dtissue_epi_masked
 
 # Now generate the masks for CSF and WM
 # Below is adapted from from Parkes et. al 2018 -> https://github.com/lindenmp/rs-fMRI 
-gm=$subject"_T1w_space-"$space_variant"_class-GM_probtissue"
-csf=$subject"_T1w_space-"$space_variant"_class-CSF_probtissue"
-wm=$subject"_T1w_space-"$space_variant"_class-WM_probtissue"
-bmask=$subject"_T1w_space-"$space_variant"_brainmask"
 
-csf_epi=$subject"_bold_space-"$space_variant"_CSF"
-wm_epi=$subject"_bold_space-"$space_variant"_WM"
-csfwm_epi=$subject"_bold_space-"$space_variant"_CSFWM"
+
+#gm=$subject"_label-GM_probseg.nii.gz"
+#csf=$subject"_label-CSF_probseg.nii.gz"
+#wm=$subject"_label-WM_probseg.nii.gz"
+#bmask=$subject"_desc-brain_mask.nii.gz"
+
+gm_epi=$subject"_space-"$space_variant"_label-GM_probseg.nii.gz" 
+csf_epi=$subject"_space-"$space_variant"_label-CSF_probseg.nii.gz"   
+wm_epi=$subject"_space-"$space_variant"_label-WM_probseg.nii.gz"  
+csfwm_epi=$subject"_space-"$space_variant"_label-CSFWM_probseg.nii.gz"  
 
 # Directories:
-tmp_roi_dir=$FMRIPREP_DIR/$subject"/dbscan/tmp"
-anat_dir=$FMRIPREP_DIR/$subject/anat/
+tmp_roi_dir=$FMRIPREP_DIR/$subject/ses-$ses"/dbscan/tmp"
+anat_dir=$FMRIPREP_DIR/$subject/anat
 # make a temp directory for these intermediate steps for ROI creation
 mkdir -p $tmp_roi_dir
 
-
+######################################## <-----
 # threshold gm and binarise
-fslmaths $anat_dir/$gm -thr 0.95 -bin $tmp_roi_dir/vmask
+fslmaths $anat_dir/$gm_epi -thr 0.95 -bin $tmp_roi_dir/vmask
 
 # Dilate the mask twice
 fslmaths $tmp_roi_dir/vmask -dilD -bin $tmp_roi_dir/vmask
 fslmaths $tmp_roi_dir/vmask -dilD -bin $tmp_roi_dir/vmask
 
 # combined with wm and invert
-fslmaths $tmp_roi_dir/vmask -add $anat_dir/$wm -binv $tmp_roi_dir/vmask
+fslmaths $tmp_roi_dir/vmask -add $anat_dir/$wm_epi -binv $tmp_roi_dir/vmask
 
 # erode whole brain mask twice
 fslmaths $anat_dir/$bmask -eroF $tmp_roi_dir/e_native_t1_brain_mask
@@ -151,13 +154,13 @@ fslmaths $tmp_roi_dir/$csf"_e1" -eroF -bin $tmp_roi_dir/$csf"_e2"
 # mask out non-brain
 fslmaths $anat_dir/$wm -thr 0.95 -bin $tmp_roi_dir/$wm"v"
 
-input_wm=$tmp_roi_dir/$wm"v"
-for i in `seq 1 5`;
-	do
-		output_wm=$tmp_roi_dir/$wm"_e"$i
-		fslmaths $input_wm -eroF -bin $output_wm
-		# Now save the input for the next erosion
-		intput_wm=$output_wm
+input_wm=$tmp_roi_dir/$subject"_label-WM_probsegv.nii.gz"
+for i in `seq 1 5`; 
+	do 
+		output_wm=$tmp_roi_dir/$subject"_label-WM_probseg_e"$i".nii.gz" ; 
+		fslmaths $input_wm -eroF -bin $output_wm ; 
+		# Now save the input for the next erosion 
+		input_wm=$output_wm  ;  
 	done
 
 # After this interpolate to epi space using nearest neighbor interpolation.
@@ -165,7 +168,7 @@ flirt -in $tmp_roi_dir/$csf"_e1" -ref $func -out $tmp_roi_dir/$csf_epi"_e1" -app
 flirt -in $tmp_roi_dir/$wm"_e5" -ref $func -out $tmp_roi_dir/$wm_epi"_e5" -applyxfm -interp nearestneighbour -usesqform
 
 # Now combine both of these into one nifti, labelling wm as 2
-fslmaths $tmp_roi_dir/$wm_epi"_e5" -mul 2 -add $tmp_roi_dir/$csf_epi"_e1" $FMRIPREP_DIR/$subject"/dbscan/"$csfwm_epi
+fslmaths $tmp_roi_dir/$wm_epi"_e5" -mul 2 -add $tmp_roi_dir/$csf_epi"_e1" $FMRIPREP_DIR/$subject/ses-$ses"/dbscan/"$csfwm_epi
 
 
 
@@ -182,7 +185,7 @@ fslmaths $tmp_roi_dir/$wm_epi"_e5" -mul 2 -add $tmp_roi_dir/$csf_epi"_e1" $FMRIP
 # Grabbing WM+CSF (2P) -- This has to be recalculated, need to get the ROIs and do what fMRIprep does for the ROIs of CSF and wm.
 # awk -v OFS='\t' '{if(NR>1)print $1,$2}' $FMRIPREP_DIR/$subject'/func/'${subject}_task-rest_bold_confounds.tsv > $FMRIPREP_DIR/$subject'/func/'${subject}_task-rest_bold_wmcsf.tsv
 # Replacement 2P:
-fslmeants -i $func --label=$FMRIPREP_DIR/$subject"/dbscan/"$csfwm_epi -o $FMRIPREP_DIR/$subject'/func/'${subject}_task-rest_bold_wmcsf.tsv
+fslmeants -i $func --label=$FMRIPREP_DIR/$subject/ses-$ses"/dbscan/"$csfwm_epi -o $FMRIPREP_DIR/$subject/ses-$ses'/func/'${subject}_task-rest_bold_wmcsf.tsv
 
 
 # Grabbing WM+CSF+GSR (2P+GSR)
