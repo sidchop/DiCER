@@ -22,48 +22,52 @@
 
 
 # Here adjust it all.
-prepro_variant=AROMAnonaggr
+#prepro_variant=AROMAnonaggr
 # Have to remember to always start without 2P then add 2P aggressively later, this is a reasonable thing to have to be honest. 
 # Now here see if we use aggresive AROMA what happens to the overall structure of things does this change the qc-fc?
 
-# prepro_variant=smoothAROMAnonaggr
+prepro_variant=smoothAROMAnonaggr
 
-echo "Processing " $subject ".................."
-if [ ! -d "$FMRIPREP_DIR/$subject/dbscan" ]; then
-          mkdir -p $FMRIPREP_DIR/$subject/dbscan
+echo "Processing " $subject ses-$ses ".................."
+if [ ! -d "$FMRIPREP_DIR/$subject/ses-$ses/dbscan" ]; then
+          mkdir -p $FMRIPREP_DIR/$subject/ses-$ses/dbscan
 fi
 # Remove existing stuff in dbscan
-rm -rf $FMRIPREP_DIR/$subject/dbscan/*
+rm -rf $FMRIPREP_DIR/$subject/ses-$ses/dbscan/*
 # rm -rf $FMRIPREP_DIR/$subject/dbscan/*.txt
 
-func=$FMRIPREP_DIR/$subject'/func/'$subject"_task-rest_"$SCAN_ID"bold_space-"$space_variant"_variant-"$prepro_variant"_preproc.nii.gz"
-confounds=$FMRIPREP_DIR/$subject'/func/'$subject"_task-rest_"$SCAN_ID"bold_confounds.tsv"
-gm_prob_T1w=$FMRIPREP_DIR/$subject/anat/$subject"_T1w_space-"$space_variant"_class-GM_probtissue.nii.gz"
-gm_prob_epi=$FMRIPREP_DIR/$subject/anat/$subject"_bold_space-"$space_variant"_class-GM_probtissue.nii.gz"
-mask_T1w=$FMRIPREP_DIR/$subject/anat/$subject"_T1w_space-"$space_variant"_brainmask.nii.gz"
-mask_epi=$FMRIPREP_DIR/$subject/anat/$subject"_bold_space-"$space_variant"_brainmask.nii.gz"
 
-dtissue_T1w=$FMRIPREP_DIR/$subject/anat/$subject"_T1w_space-"$space_variant"_dtissue.nii.gz"
-dtissue_epi=$FMRIPREP_DIR/$subject/anat/$subject"_bold_space-"$space_variant"_dtissue.nii.gz"
-dtissue_epi_masked=$FMRIPREP_DIR/$subject"/dbscan/"$subject"_bold_space-"$space_variant"_dtissue_masked.nii.gz"
+
+func=$FMRIPREP_DIR/$subject/ses-$ses'/func/'$subject"_ses-"$ses"_task-rest_space-"$space_variant"_desc-"$prepro_variant"_bold.nii.gz"
+func_ref=$FMRIPREP_DIR/$subject/ses-$ses'/func/'$subject"_ses-"$ses"_task-rest_space-"$space_variant"_boldref.nii.gz"
+confounds=$FMRIPREP_DIR/$subject/ses-$ses'/func/'$subject"_ses-"$ses"_task-rest_desc-confounds_regressors.tsv"
+gm_prob_T1w=$FMRIPREP_DIR/$subject/anat/$subject"_space-"$space_variant"_label-GM_probseg.nii.gz"
+gm_prob_epi=$FMRIPREP_DIR/$subject/anat/$subject"_bold_space-"$space_variant"_label-GM_probseg.nii.gz"
+#mask_T1w=$FMRIPREP_DIR/$subject/anat/$subject"_space-"$space_variant"_desc-brain_mask.nii.gz"
+mask_epi=$FMRIPREP_DIR/$subject/ses-$ses/func/$subject"_ses-"$ses"_task-rest_space-"$space_variant"_desc-brain_mask.nii.gz"
+dtissue_T1w=$FMRIPREP_DIR/$subject/anat/$subject"_space-"$space_variant"_dseg.nii.gz"
+dtissue_epi=$FMRIPREP_DIR/$subject/anat/$subject"_bold_space-"$space_variant"_dseg.nii.gz"
+dtissue_epi_masked=$FMRIPREP_DIR/$subject/anat/$subject"_bold_space-"$space_variant"_dseg_masked.nii.gz"
 
 #flirt the masks and maps to be in epi space
-flirt -in $gm_prob_T1w -out $gm_prob_epi -ref $func -applyxfm -usesqform
-flirt -in $mask_T1w -out $mask_epi -ref $func -applyxfm -usesqform
-flirt -in $dtissue_T1w -out $dtissue_epi -ref $func -applyxfm -interp nearestneighbour -usesqform
+flirt -in $gm_prob_T1w -out $gm_prob_epi -ref $func_ref -applyxfm -usesqform
+#flirt -in $mask_T1w -out $mask_epi -ref $func_ref -applyxfm -usesqform
+flirt -in $dtissue_T1w -out $dtissue_epi -ref $func_ref -applyxfm -interp nearestneighbour -usesqform
 
 # Have this mean epi for the purposes of using this for a mask later on
-mean_epi_targ=$FMRIPREP_DIR/$subject'/dbscan/'$subject"_task-rest_"$SCAN_ID"bold_space-"$space_variant"_variant-"$prepro_variant"_preproc_mean.nii.gz"
+mean_epi_targ=$FMRIPREP_DIR/$subject/ses-$ses'/dbscan/'$subject"_ses-"$ses"_task-rest_space-"$space_variant"_desc-"$prepro_variant"_bold_mean.nii.gz"
 
 # Now take the tissue mask and explicity mask it off to where the mean $func image is > 0
 fslmaths $func -Tmean $mean_epi_targ
 fslmaths $dtissue_epi -mas $mean_epi_targ $dtissue_epi_masked
 
-dbscan_folder=$FMRIPREP_DIR/$subject"/dbscan/"
-gm_dbscan=$FMRIPREP_DIR/$subject"/dbscan/"$subject"_bold_space-"$space_variant"_gm_mask.nii.gz"
-tissue_ordering=$FMRIPREP_DIR/$subject"/dbscan/"$subject"_bold_space-"$space_variant"_gm_mask_gsordering_tissue.nii.gz"
+dbscan_folder=$FMRIPREP_DIR/$subject/ses-$ses"/dbscan/"
+gm_dbscan=$FMRIPREP_DIR/$subject"/ses-$ses/dbscan/"$subject"_bold_space-"$space_variant"_gm_mask.nii.gz"
+tissue_ordering=$FMRIPREP_DIR/$subject/ses-$ses"/dbscan/"$subject"_bold_space-"$space_variant"_gm_mask_gsordering_tissue.nii.gz"
+
 
 export func
+export func_ref
 export gm_prob_epi
 export gm_dbscan
 export mask_epi
@@ -102,17 +106,18 @@ fslmaths $dbscan_folder/temp_gm_2 -add $dtissue_epi_masked $dtissue_epi_masked
 
 # Now generate the masks for CSF and WM
 # Below is adapted from from Parkes et. al 2018 -> https://github.com/lindenmp/rs-fMRI 
-gm=$subject"_T1w_space-"$space_variant"_class-GM_probtissue"
-csf=$subject"_T1w_space-"$space_variant"_class-CSF_probtissue"
-wm=$subject"_T1w_space-"$space_variant"_class-WM_probtissue"
-bmask=$subject"_T1w_space-"$space_variant"_brainmask"
+gm=$subject"_space-"$space_variant"_label-GM_probseg"
+csf=$subject"_space-"$space_variant"_label-CSF_probseg"
+wm=$subject"_space-"$space_variant"_label-WM_probseg"
+bmask=$subject"_space-"$space_variant"_desc-brain_mask"
 
-csf_epi=$subject"_bold_space-"$space_variant"_CSF"
-wm_epi=$subject"_bold_space-"$space_variant"_WM"
-csfwm_epi=$subject"_bold_space-"$space_variant"_CSFWM"
+
+csf_epi=$subject"_bold_space-"$space_variant"_label-CSF_probseg"
+wm_epi=$subject"_bold_space-"$space_variant"_label-WM_probseg"
+csfwm_epi=$subject"_bold_space-"$space_variant"_label-WMCSF_probseg"
 
 # Directories:
-tmp_roi_dir=$FMRIPREP_DIR/$subject"/dbscan/tmp"
+tmp_roi_dir=$FMRIPREP_DIR/$subject"/ses-$ses/dbscan/tmp"
 anat_dir=$FMRIPREP_DIR/$subject/anat/
 # make a temp directory for these intermediate steps for ROI creation
 mkdir -p $tmp_roi_dir
@@ -156,11 +161,11 @@ for i in `seq 1 5`;
 	done
 
 # After this interpolate to epi space using nearest neighbor interpolation.
-flirt -in $tmp_roi_dir/$csf"_e1" -ref $func -out $tmp_roi_dir/$csf_epi"_e1" -applyxfm -interp nearestneighbour -usesqform
-flirt -in $tmp_roi_dir/$wm"_e5" -ref $func -out $tmp_roi_dir/$wm_epi"_e5" -applyxfm -interp nearestneighbour -usesqform
+flirt -in $tmp_roi_dir/$csf"_e1" -ref $func_ref -out $tmp_roi_dir/$csf_epi"_e1" -applyxfm -interp nearestneighbour -usesqform
+flirt -in $tmp_roi_dir/$wm"_e5" -ref $func_ref -out $tmp_roi_dir/$wm_epi"_e5" -applyxfm -interp nearestneighbour -usesqform
 
 # Now combine both of these into one nifti, labelling wm as 2
-fslmaths $tmp_roi_dir/$wm_epi"_e5" -mul 2 -add $tmp_roi_dir/$csf_epi"_e1" $FMRIPREP_DIR/$subject"/dbscan/"$csfwm_epi
+fslmaths $tmp_roi_dir/$wm_epi"_e5" -mul 2 -add $tmp_roi_dir/$csf_epi"_e1" $FMRIPREP_DIR/$subject/ses-$ses"/dbscan/"$csfwm_epi
 
 
 
@@ -177,45 +182,46 @@ fslmaths $tmp_roi_dir/$wm_epi"_e5" -mul 2 -add $tmp_roi_dir/$csf_epi"_e1" $FMRIP
 # Grabbing WM+CSF (2P) -- This has to be recalculated, need to get the ROIs and do what fMRIprep does for the ROIs of CSF and wm.
 # awk -v OFS='\t' '{if(NR>1)print $1,$2}' $FMRIPREP_DIR/$subject'/func/'${subject}_task-rest_bold_confounds.tsv > $FMRIPREP_DIR/$subject'/func/'${subject}_task-rest_bold_wmcsf.tsv
 # Replacement 2P:
-fslmeants -i $func --label=$FMRIPREP_DIR/$subject"/dbscan/"$csfwm_epi -o $FMRIPREP_DIR/$subject'/func/'${subject}_task-rest_bold_wmcsf.tsv
+fslmeants -i $func --label=$FMRIPREP_DIR/$subject/ses-$ses"/dbscan/"$csfwm_epi -o $FMRIPREP_DIR/$subject/ses-$ses'/func/'${subject}_task-rest_bold_wmcsf.tsv
 
 
 # Grabbing WM+CSF+GSR (2P+GSR)
 # awk -v OFS='\t' '{if(NR>1)print $1,$2,$3}' $FMRIPREP_DIR/$subject'/func/'${subject}_task-rest_bold_confounds.tsv > $FMRIPREP_DIR/$subject'/func/'${subject}_task-rest_bold_wmcsfgs.tsv
 # Replacement GSR 
-fslmeants -i $func --label=$mask_epi -o $FMRIPREP_DIR/$subject'/dbscan/'$subject"_brain_signal.txt"
-paste -d '\t' $FMRIPREP_DIR/$subject'/func/'${subject}_task-rest_bold_wmcsf.tsv $FMRIPREP_DIR/$subject'/dbscan/'$subject"_brain_signal.txt" > $FMRIPREP_DIR/$subject'/func/'${subject}_task-rest_bold_wmcsfgs.tsv
+fslmeants -i $func --label=$mask_epi -o $FMRIPREP_DIR/$subject/ses-$ses'/dbscan/'$subject"_brain_signal.txt"
+paste -d '\t' $FMRIPREP_DIR/$subject/ses-$ses'/func/'${subject}_task-rest_bold_wmcsf.tsv $FMRIPREP_DIR/$subject/ses-$ses'/dbscan/'$subject"_brain_signal.txt" > $FMRIPREP_DIR/$subject/ses-$ses'/func/'${subject}_task-rest_bold_wmcsfgs.tsv
 
 
 # Here grabbing GM signal (2P+GMR)
-fslmeants -i $func --label=$dtissue_epi_masked -o $FMRIPREP_DIR/$subject'/dbscan/'$subject"_tissue_signals.txt"
-awk -v OFS='\t' '{print $4}' $FMRIPREP_DIR/$subject'/dbscan/'$subject"_tissue_signals.txt" > $FMRIPREP_DIR/$subject'/func/'${subject}_task-rest_bold_gm.tsv
-paste -d '\t' $FMRIPREP_DIR/$subject'/func/'${subject}_task-rest_bold_wmcsf.tsv $FMRIPREP_DIR/$subject'/func/'${subject}_task-rest_bold_gm.tsv > $FMRIPREP_DIR/$subject'/func/'${subject}_task-rest_bold_wmcsfgm.tsv
+fslmeants -i $func --label=$dtissue_epi_masked -o $FMRIPREP_DIR/$subject/ses-$ses'/dbscan/'$subject"_tissue_signals.txt"
+awk -v OFS='\t' '{print $4}' $FMRIPREP_DIR/$subject/ses-$ses'/dbscan/'$subject"_tissue_signals.txt" > $FMRIPREP_DIR/$subject/ses-$ses'/func/'${subject}_task-rest_bold_gm.tsv
+paste -d '\t' $FMRIPREP_DIR/$subject/ses-$ses'/func/'${subject}_task-rest_bold_wmcsf.tsv $FMRIPREP_DIR/$subject/ses-$ses'/func/'${subject}_task-rest_bold_gm.tsv > $FMRIPREP_DIR/$subject/ses-$ses'/func/'${subject}_task-rest_bold_wmcsfgm.tsv
 
 
 # Now perform the regression
 
-func_2P=$FMRIPREP_DIR/$subject'/func/'$subject"_task-rest_"$SCAN_ID"bold_space-"$space_variant"_variant-"$prepro_variant"_preproc+2P.nii.gz"
-func_2P_GSR=$FMRIPREP_DIR/$subject'/func/'$subject"_task-rest_"$SCAN_ID"bold_space-"$space_variant"_variant-"$prepro_variant"_preproc+2P+GSR.nii.gz"
-func_2P_GMR=$FMRIPREP_DIR/$subject'/func/'$subject"_task-rest_"$SCAN_ID"bold_space-"$space_variant"_variant-"$prepro_variant"_preproc+2P+GMR.nii.gz"
+func_2P=$FMRIPREP_DIR/$subject/ses-$ses'/func/'$subject"_ses-"$ses"_task-rest_space-"$space_variant"_desc-"$prepro_variant"_bold+2P.nii.gz"
+func_2P_GSR=$FMRIPREP_DIR/$subject/ses-$ses'/func/'$subject"_ses-"$ses"_task-rest_space-"$space_variant"_desc-"$prepro_variant"_bold+2P+GSR.nii.gz"
+func_2P_GMR=$FMRIPREP_DIR/$subject/ses-$ses'/func/'$subject"_ses-"$ses"_task-rest_space-"$space_variant"_desc-"$prepro_variant"_bold+2P+GMR.nii.gz"
 
 # WM+CSF (2P)
-fsl_regfilt -i $func -d $FMRIPREP_DIR/$subject'/func/'${subject}_task-rest_bold_wmcsf.tsv -f 1,2 -o $func_2P -a
+fsl_regfilt -i $func -d $FMRIPREP_DIR/$subject/ses-$ses'/func/'${subject}_task-rest_bold_wmcsf.tsv -f 1,2 -o $func_2P -a
 # WM+CSF+GSR (2P+GSR)
-fsl_regfilt -i $func -d $FMRIPREP_DIR/$subject'/func/'${subject}_task-rest_bold_wmcsfgs.tsv -f 1,2,3 -o $func_2P_GSR -a
+fsl_regfilt -i $func -d $FMRIPREP_DIR/$subject/ses-$ses'/func/'${subject}_task-rest_bold_wmcsfgs.tsv -f 1,2,3 -o $func_2P_GSR -a
 # WM+CSF+GMR (2P+GMR)
-fsl_regfilt -i $func -d $FMRIPREP_DIR/$subject'/func/'${subject}_task-rest_bold_wmcsfgm.tsv -f 1,2,3 -o $func_2P_GMR -a
+fsl_regfilt -i $func -d $FMRIPREP_DIR/$subject/ses-$ses'/func/'${subject}_task-rest_bold_wmcsfgm.tsv -f 1,2,3 -o $func_2P_GMR -a
 
 #  STAGE 1B: Perform high pass filtering
 # ======================================================================
 # First one: inputs for DBSCAN (AROMA+2P)
-input_dbscan=$FMRIPREP_DIR/$subject'/dbscan/'$subject"_task-rest_"$SCAN_ID"bold_space-"$space_variant"_variant-"$prepro_variant"_preproc+2P_detrended_hpf.nii.gz"
+input_dbscan=$FMRIPREP_DIR/$subject/ses-$ses'/dbscan/'$subject"_ses-"$ses"_task-rest_space-"$space_variant"_desc-"$prepro_variant"_bold+2P_detrended_hpf.nii.gz"
 sh fmriprepProcess/preprocess_fmriprep.sh $func_2P $input_dbscan $dbscan_folder $mask_epi
+
 # Second one: AROMA+2P+GSR
-func_2P_GSR_dhpf=$FMRIPREP_DIR/$subject'/dbscan/'$subject"_task-rest_"$SCAN_ID"bold_space-"$space_variant"_variant-"$prepro_variant"_preproc+2P+GSR_detrended_hpf.nii.gz"
+func_2P_GSR_dhpf=$FMRIPREP_DIR/$subject/ses-$ses'/dbscan/'$subject"_ses-"$ses"_task-rest_space-"$space_variant"_desc-"$prepro_variant"_bold+2P+GSR_detrended_hpf.nii.gz"
 sh fmriprepProcess/preprocess_fmriprep.sh $func_2P_GSR $func_2P_GSR_dhpf $dbscan_folder $mask_epi
 # Third one: AROMA+2P+GMR
-func_2P_GMR_dhpf=$FMRIPREP_DIR/$subject'/dbscan/'$subject"_task-rest_"$SCAN_ID"bold_space-"$space_variant"_variant-"$prepro_variant"_preproc+2P+GMR_detrended_hpf.nii.gz"
+func_2P_GMR_dhpf=$FMRIPREP_DIR/$subject/ses-$ses'/dbscan/'$subject"_ses-"$ses"_task-rest_space-"$space_variant"_desc-"$prepro_variant"_bold+2P+GMR_detrended_hpf.nii.gz"
 sh fmriprepProcess/preprocess_fmriprep.sh $func_2P_GMR $func_2P_GMR_dhpf $dbscan_folder $mask_epi
 # UP TO HERE fix up this then propagate changes below. Also in future maybe see if we can get naming conventions w/o nii.gz so code is cleaner.
 
@@ -234,7 +240,7 @@ python fmriprepProcess/gsReorder.py -f $input_dbscan -ts $dtissue_epi_masked -of
 # ======================================================================
 # DBSCAN cluster correction to retreive the regressors
 
-output_folder=$FMRIPREP_DIR/$subject'/dbscan/'
+output_folder=$FMRIPREP_DIR/$subject/ses-$ses'/dbscan/'
 
 # mask_gm=sub-10448_T1w_space-MNI152NLin2009cAsym_variant_gm_mask.nii.gz
 # mask_gm=$FMRIPREP_DIR/$subject"/dbscan/"$subject"_T1w_space-"$space_variant"_variant_gm_mask.nii.gz"
@@ -244,15 +250,15 @@ python carpetCleaning/clusterCorrect.py $dtissue_epi_masked '.' $input_dbscan $o
 # ======================================================================
 # Regress out all the regressors
 regressor_dbscan=$subject"_dbscan_liberal_regressors.csv"
-# f1=$subject"_task-rest_"$SCAN_ID"bold_space-"$space_variant"_variant-"$prepro_variant"_preproc_detrended_hpf.nii.gz"
-f1=$subject"_task-rest_"$SCAN_ID"bold_space-"$space_variant"_variant-"$prepro_variant"_preproc+2P_detrended_hpf.nii.gz"
+# f1=$subject"_task-rest_"$SCAN_ID".bold_space-"$space_variant"_variant-"$prepro_variant"_preproc_detrended_hpf.nii.gz"
+f1=$subject"_ses-"$ses"_task-rest_space-"$space_variant"_desc-"$prepro_variant"_bold+2P_detrended_hpf.nii.gz"
 python carpetCleaning/vacuum_dbscan.py -f $f1 -db $regressor_dbscan -s $subject -d $output_folder
 
 # Calculate aGMR
 # regressor=$subject"_aGMR.csv"
 # python carpetCleaning/vacuum_dbscan.py -f $f1 -db $regressor -s $subject -d $output_folder -of "aGMR"
 
-output_dbscan=$FMRIPREP_DIR/$subject'/dbscan/'$subject"_task-rest_"$SCAN_ID"bold_space-"$space_variant"_variant-"$prepro_variant"_preproc+2P_detrended_hpf_dbscan.nii.gz"
+output_dbscan=$FMRIPREP_DIR/$subject/ses-$ses'/dbscan/'$subject"_ses-"$ses"_task-rest_space-"$space_variant"_desc-"$prepro_variant"_bold+2P_detrended_hpf_dbscan.nii.gz"
 # output_aGMR=$FMRIPREP_DIR/$subject'/dbscan/'$subject"_task-rest_"$SCAN_ID"bold_space-"$space_variant"_variant-"$prepro_variant"_preproc_detrended_hpf_aGMR.nii.gz"
 
 # STAGE 4:
@@ -264,7 +270,10 @@ export MPLBACKEND="agg"
 
 # Do the cluster re-ordering:
 python fmriprepProcess/clusterReorder.py $dtissue_epi_masked '.' $input_dbscan $output_folder $subject
-cluster_tissue_ordering=$FMRIPREP_DIR/$subject/dbscan/$subject"_bold_space-"$space_variant"_dtissue_masked_clusterorder.nii.gz"
+#cluster_tissue_ordering=$FMRIPREP_DIR/$subject/ses-$ses/dbscan/$subject"_ses-"$ses"_bold_space-"$space_variant"_dtissue_masked_clusterorder.nii.gz"
 
+cluster_tissue_ordering=$FMRIPREP_DIR/$subject/ses-$ses/dbscan/$subject"_ses-"$ses"_task-rest_space-"$space_variant"_desc-"$prepro_variant"_bold+2P_detrended_hpf_clusterorder.nii.gz"
+																sub-003_ses-2_task-rest_space-MNI152Lin_desc-smoothAROMAnonaggr_bold+2P_detrended_hpf_clusterorder.nii.gz
 # Run the automated report:
-python carpetReport/tapestry.py -f $input_dbscan","$output_dbscan","$func_2P_GMR_dhpf","$func_2P_GSR_dhpf -fl "ICA_AROMA,DBSCAN,GMR,GSR"  -o $tissue_ordering","$cluster_tissue_ordering -l "GS_reorder,CLUST" -s $subject -d $FMRIPREP_DIR"/dbscan/" -ts $dtissue_epi_masked -reg $FMRIPREP_DIR/$subject'/dbscan/'$regressor_dbscan -cf $confounds
+python carpetReport/tapestry.py -f $input_dbscan","$output_dbscan","$func_2P_GMR_dhpf","$func_2P_GSR_dhpf -fl "ICA_AROMA,DBSCAN,GMR,GSR"  -o $tissue_ordering","$cluster_tissue_ordering -l "GS_reorder,CLUST" -s $subject -d $FMRIPREP_DIR"/dbscan/" -ts $dtissue_epi_masked -reg $FMRIPREP_DIR/$subject/ses-$ses'/dbscan/'$regressor_dbscan -cf $confounds
+#python carpetReport/tapestry.py -f $input_dbscan","$output_dbscan","$func_2P_GMR_dhpf","$func_2P_GSR_dhpf -fl "ICA_AROMA,DBSCAN,GMR,GSR"  -o $tissue_ordering -l "GS_reorder" -s $subject -d $FMRIPREP_DIR"/dbscan/" -ts $dtissue_epi_masked -reg $FMRIPREP_DIR/$subject/ses-$ses'/dbscan/'$regressor_dbscan -cf $confounds
